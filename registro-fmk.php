@@ -9,15 +9,16 @@
  * Version:     0.1.0
  */
 
+
+
+//Includes
 use CheckVat\checkVat as Vat;
 use CheckVat\checkVatService;
 
 require __DIR__ . '/vendor/autoload.php';
 
-/**
- * New fild in billing form
-*/
 
+//Crear nuevo campo billing_cif
 function custom_woocommerce_billing_fields($fields)
 {
     $fields['billing_cif'] = array(
@@ -32,15 +33,10 @@ function custom_woocommerce_billing_fields($fields)
 
     return $fields;
 }
-
 add_filter('woocommerce_billing_fields', 'custom_woocommerce_billing_fields');
 
 
-
-
-/**
- * Añadir campos a la ficha de cliente
- */
+//Añadir nuevo campo a la ficha de cliente
 function custom_woocommerce_customer_meta_fields( $fields ) 
 {
     $fields['billing']['fields']['billing_cif'] = array( 'label' => __( 'CIF', 'woocommerce' ), 'description' => 'Puede ser CIF español, portugués o Intracomunitario PT');
@@ -52,12 +48,8 @@ add_filter( 'woocommerce_customer_meta_fields', 'custom_woocommerce_customer_met
 
 
 
-/**
- * @snippet       Añadir campos al registro
- *                https://www.cloudways.com/blog/add-woocommerce-registration-form-fields/
- */
-
-// Add new register fields for WooCommerce registration.
+//1. Añadir campos al registro
+//   https://www.cloudways.com/blog/add-woocommerce-registration-form-fields/
 function wooc_extra_register_fields() {?>
        <p class="form-row form-row-first">
 	       <label for="reg_billing_first_name"><?php echo('Nombre'); ?><span class="required">*</span></label>
@@ -134,18 +126,9 @@ function wooc_extra_register_fields() {?>
  add_action( 'woocommerce_register_form_start', 'wooc_extra_register_fields' );
 
 
-
-
-
-
-
-
-
-
-
-
 //2. Validacion de los campos
-function wooc_validate_extra_register_fields( $username, $email, $validation_errors ) {
+function wooc_validate_extra_register_fields( $username, $email, $validation_errors ) 
+{
 
       if ( isset( $_POST['billing_first_name'] ) && empty( $_POST['billing_first_name'] ) ) {
              $validation_errors->add( 'billing_first_name_error', __( 'Nombre es requerido', 'woocommerce' ) );
@@ -193,7 +176,8 @@ function wooc_validate_extra_register_fields( $username, $email, $validation_err
             if ( !empty( $hasVat ) ) {
                 $validation_errors->add( 'billing_cif_error', __( 'El VAT introducido ya ha sido registrado.', 'woocommerce' ) );
             }
-            //Check VAT with VIES
+
+            //Check with VIES
             $vat_number = $_POST['billing_cif'];   
             $country_code = substr($vat_number, 0, 2);
             $output      = substr($vat_number, 2);
@@ -208,6 +192,8 @@ function wooc_validate_extra_register_fields( $username, $email, $validation_err
             if( !$result['valid'] ){
                 $validation_errors->add( 'billing_cif_error', __( 'El VAT introducido no existe.', 'woocommerce' ) );
             }
+
+            //get company name from VIES
             $_POST['billing_company'] = $result['name'];
       }
       else{
@@ -219,12 +205,6 @@ function wooc_validate_extra_register_fields( $username, $email, $validation_err
 }
 
 add_action( 'woocommerce_register_post', 'wooc_validate_extra_register_fields', 10, 3 );
-
-
-
-
-
-
 
 
 
@@ -287,3 +267,43 @@ function wooc_save_extra_register_fields( $customer_id ) {
 add_action( 'woocommerce_created_customer', 'wooc_save_extra_register_fields' );
 
 
+
+
+/***************************** 
+ * 
+ * Caso Portugal con VAT
+ * 
+*/
+
+
+//Rol de cliente especial exento de impuestos
+add_role( 'portugal', __('portugal' ),array( 'read' => true ));
+
+// Los clientes portugueses con VAT se les asigna el rol portugal
+function wc_save_registration_form_fields( $customer_id ) {
+    if ( isset($_POST['role']) ) {
+        if( $_POST['role'] == 'portugal' ){
+            $user = new WP_User($customer_id);
+            $user->set_role('portugal');
+        }
+    }
+}
+add_action( 'woocommerce_created_customer', 'wc_save_registration_form_fields' );
+
+//Override WooCommerce tax display option for portuguses.
+//@see http://stackoverflow.com/questions/29649963/displaying-taxes-in-woocommerce-by-user-role
+
+function tax_category_role( $tax_class ) 
+{
+    if ( current_user_can( 'portugues' ) ) {
+        $tax_class = 'Tasa Cero';
+    }
+    
+    return $tax_class;
+}
+
+add_filter( 'woocommerce_before_cart_contents', 'tax_category_role', 1, 2 );
+add_filter( 'woocommerce_before_shipping_calculator', 'tax_category_role', 1, 2);
+add_filter( 'woocommerce_before_checkout_billing_form', 'tax_category_role', 1, 2 );
+add_filter( 'woocommerce_product_get_tax_class', 'tax_category_role', 1, 2 );
+add_filter( 'woocommerce_product_variation_get_tax_class', 'tax_category_role', 1, 2 );
