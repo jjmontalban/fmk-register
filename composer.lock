@@ -1,0 +1,73 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "47e299ee174b285c11747671974d46db",
+    "packages": [
+        {
+            "name": "pemedina/checkvat",
+            "version": "dev-master",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/pemedina/checkvat.git",
+                "reference": "b61504af8f264fb692e8784cfdb23a510d63f7e6"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/pemedina/checkvat/zipball/b61504af8f264fb692e8784cfdb23a510d63f7e6",
+                "reference": "b61504af8f264fb692e8784cfdb23a510d63f7e6",
+                "shasum": ""
+            },
+            "require": {
+                "ext-soap": "*",
+                "php": ">=7.4"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "~4.0"
+            },
+            "default-branch": true,
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "CheckVat\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Pablo E. Medina",
+                    "email": "pablo.medina@fastmail.com"
+                }
+            ],
+            "description": "A simple php wrapper to check foreign VAT IDs using SOAP via http://ec.europa.eu/taxation_customs/vies/checkVatService.wsdl",
+            "homepage": "http://github.com/pemedina/checkvat",
+            "keywords": [
+                "api",
+                "euro",
+                "vat",
+                "webservice"
+            ],
+            "support": {
+                "issues": "https://github.com/pemedina/checkvat/issues",
+                "source": "https://github.com/pemedina/checkvat/tree/master"
+            },
+            "time": "2022-03-21T21:34:33+00:00"
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "dev",
+    "stability-flags": {
+        "pemedina/checkvat": 20
+    },
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": [],
+    "platform-dev": [],
+    "plugin-api-version": "2.3.0"
+}
