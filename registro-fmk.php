@@ -17,6 +17,45 @@ use CheckVat\checkVatService;
 
 require __DIR__ . '/vendor/autoload.php';
 
+//check if woocommerce active
+function woo_activate() {
+    $plugin = plugin_basename( __FILE__ );
+
+    if ( !class_exists ('Woocommerce') ) 
+    { 
+        // Message error + allow back link.
+        deactivate_plugins( $plugin );
+        wp_die( _e( "This plugin requires Woocommerce to be installed and activated.", "psws" ), _e( "Error", "psws" ), array( 'back_link' => true ) );        
+    }
+}
+register_activation_hook( __FILE__, 'woo_activate' ); // Register myplugin_activate on
+
+
+
+
+/**
+ * Creación de rol customer_vat 
+ * Override WooCommerce tax display option for customer with VAT.
+ */
+
+add_role( 'customer_vat', __('Cliente con VAT' ),array( 'read' => true ));
+
+function tax_category_role( $tax_class ) 
+{
+	if ( current_user_can( 'customer_vat' ) ) {
+			$tax_class = 'Zero Rate';
+		}
+
+    return $tax_class;
+}
+add_filter( 'woocommerce_before_cart_contents', 'tax_category_role', 1, 2 );
+add_filter( 'woocommerce_before_shipping_calculator', 'tax_category_role', 1, 2);
+add_filter( 'woocommerce_before_checkout_billing_form', 'tax_category_role', 1, 2 );
+add_filter( 'woocommerce_product_get_tax_class', 'tax_category_role', 1, 2 );
+add_filter( 'woocommerce_product_variation_get_tax_class', 'tax_category_role', 1, 2 );
+
+
+
 
 //Crear nuevo campo billing_cif
 function custom_woocommerce_billing_fields($fields)
@@ -39,8 +78,9 @@ add_filter('woocommerce_billing_fields', 'custom_woocommerce_billing_fields');
 //Añadir nuevo campo a la ficha de cliente
 function custom_woocommerce_customer_meta_fields( $fields ) 
 {
-    $fields['billing']['fields']['billing_cif'] = array( 'label' => __( 'CIF', 'woocommerce' ), 'description' => 'Puede ser CIF español, portugués o Intracomunitario PT');
-		
+    $fields['billing']['fields']['billing_cif'] = array( 'label' => __( 'CIF', 'woocommerce' ), 
+                                                         'description' => 'Puede ser CIF español o portugués (9 dígitos) o Intracomunitario (PT + 9 dígitos) exento de IVA');
+
     return $fields;
 }
 add_filter( 'woocommerce_customer_meta_fields', 'custom_woocommerce_customer_meta_fields' );
@@ -168,7 +208,7 @@ function wooc_validate_extra_register_fields( $username, $email, $validation_err
             }      
 	  }
 
-      //VAT Case (only Portugal)
+      //VAT Case (11 digits and with system validation)
       else if( isset( $_POST['billing_cif'] ) && strlen( $_POST['billing_cif'] ) == 11 )
       {
             //Already registered?
@@ -192,12 +232,14 @@ function wooc_validate_extra_register_fields( $username, $email, $validation_err
             if( !$result['valid'] ){
                 $validation_errors->add( 'billing_cif_error', __( 'El VAT introducido no existe.', 'woocommerce' ) );
             }
+            //VAT Validation success!
 
             //get company name from VIES
             $_POST['billing_company'] = $result['name'];
+            //
       }
       else{
-            $validation_errors->add( 'billing_cif_error', __( 'El NIF/VAT introducido debe tener 9 u 11 dígitos.', 'woocommerce' ) );
+            $validation_errors->add( 'billing_cif_error', __( 'El CIF/VAT introducido debe tener 9 dígitos (NIF) o 11 dígitos (European     VAT).', 'woocommerce' ) );
       }
 	
 
@@ -236,6 +278,10 @@ function wooc_save_extra_register_fields( $customer_id ) {
 
       if ( isset( $_POST['billing_cif'] ) ) {
                  update_user_meta( $customer_id, 'billing_cif', sanitize_text_field(  strtoupper( $_POST['billing_cif'] ) ) );
+                 //Clientes con VAT se les asigna el rol customer_vat, exento de impuestos
+                 if( strlen( $_POST['billing_cif'] ) == 11 ) {
+                    wp_update_user( array( 'ID' => $customer_id, 'role' => 'customer_vat' ));
+                 }
       }
 
       if ( isset( $_POST['billing_address_1'] ) ) {
@@ -263,47 +309,4 @@ function wooc_save_extra_register_fields( $customer_id ) {
       }
 
 }
-
 add_action( 'woocommerce_created_customer', 'wooc_save_extra_register_fields' );
-
-
-
-
-/***************************** 
- * 
- * Caso Portugal con VAT
- * 
-*/
-
-
-//Rol de cliente especial exento de impuestos
-add_role( 'portugal', __('portugal' ),array( 'read' => true ));
-
-// Los clientes portugueses con VAT se les asigna el rol portugal
-function wc_save_registration_form_fields( $customer_id ) {
-    if ( isset($_POST['role']) ) {
-        if( $_POST['role'] == 'portugal' ){
-            $user = new WP_User($customer_id);
-            $user->set_role('portugal');
-        }
-    }
-}
-add_action( 'woocommerce_created_customer', 'wc_save_registration_form_fields' );
-
-//Override WooCommerce tax display option for portuguses.
-//@see http://stackoverflow.com/questions/29649963/displaying-taxes-in-woocommerce-by-user-role
-
-function tax_category_role( $tax_class ) 
-{
-    if ( current_user_can( 'portugues' ) ) {
-        $tax_class = 'Tasa Cero';
-    }
-    
-    return $tax_class;
-}
-
-add_filter( 'woocommerce_before_cart_contents', 'tax_category_role', 1, 2 );
-add_filter( 'woocommerce_before_shipping_calculator', 'tax_category_role', 1, 2);
-add_filter( 'woocommerce_before_checkout_billing_form', 'tax_category_role', 1, 2 );
-add_filter( 'woocommerce_product_get_tax_class', 'tax_category_role', 1, 2 );
-add_filter( 'woocommerce_product_variation_get_tax_class', 'tax_category_role', 1, 2 );
